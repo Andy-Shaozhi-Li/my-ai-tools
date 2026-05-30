@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Life Buddy Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Life Buddy">
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            padding: 16px; background: linear-gradient(160deg, #6c5ce7 0%, #a29bfe 100%);
+            min-height: 100vh; max-width: 480px; margin: 0 auto;
+        }
+        .card { border-radius: 20px; padding: 20px; margin-bottom: 16px; background: white; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+
+        /* Schedule card */
+        .alarm-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+        .alarm-header h3 { margin: 0; font-size: 16px; color: #2d3436; }
+        .wake-badge { background: linear-gradient(135deg,#fdcb6e,#e17055); color: white; padding: 5px 14px; border-radius: 20px; font-weight: bold; font-size: 15px; }
+        .settings-panel { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+        .setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+        .setting-row label { font-size: 14px; color: #636e72; }
+        .setting-row input[type="time"], .setting-row input[type="number"] {
+            padding: 8px 12px; border: 2px solid #e9ecef; border-radius: 10px; font-size: 15px; width: 120px; text-align: center; outline: none;
+        }
+        .setting-row input:focus { border-color: #a29bfe; }
+        .unit { font-size: 12px; color: #b2bec3; margin-left: 4px; }
+        .btn-save { width: 100%; padding: 13px; background: linear-gradient(135deg,#a29bfe,#6c5ce7); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 4px; }
+        .alarm-open-link { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; background: #fff3e0; border-radius: 10px; color: #e65100; text-decoration: none; font-size: 13px; font-weight: 600; margin-top: 10px; }
+        .ex-note { background: #fff3e0; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #e65100; margin-bottom: 12px; }
+
+        /* Timeline */
+        .schedule-section { margin-top: 16px; }
+        .schedule-label { font-size: 11px; font-weight: 700; color: #b2bec3; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .timeline-item { display: flex; align-items: center; padding: 9px 0; border-bottom: 1px solid #f8f9fa; }
+        .timeline-item:last-child { border-bottom: none; }
+        .t-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 12px; flex-shrink: 0; }
+        .t-dot.pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(0,184,148,0.4); } 50% { box-shadow: 0 0 0 6px rgba(0,184,148,0); } }
+        .t-time { font-size: 12px; color: #636e72; width: 56px; flex-shrink: 0; }
+        .t-name { font-size: 14px; flex: 1; }
+        .t-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; }
+        .badge-now  { background: #d4edda; color: #155724; }
+        .badge-past { background: #f0f0f0; color: #aaa; }
+        .badge-soon { background: #e8f4fd; color: #0c5460; }
+        .suggest-bar { margin-top: 14px; padding: 11px 14px; border-radius: 12px; font-size: 14px; text-align: center; background: #f8f9fa; color: #636e72; }
+        .suggest-bar.active { background: #d4edda; color: #155724; font-weight: 600; }
+        .suggest-bar.sport  { background: #fff3e0; color: #e17055; font-weight: 600; }
+        .suggest-bar.sleep  { background: #e8f4fd; color: #0c5460; }
+        .notif-btn { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 10px; cursor: pointer; font-size: 13px; color: #636e72; width: 100%; margin-top: 12px; }
+        .notif-btn.on { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+
+        /* Timer card */
+        .date-bar { text-align: center; font-size: 13px; font-weight: 600; color: #636e72; margin-bottom: 4px; letter-spacing: 0.2px; }
+        .timer { font-size: 52px; font-weight: 800; color: #2d3436; text-align: center; margin: 6px 0 4px; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+        .awake-line { font-size: 13px; color: #b2bec3; text-align: center; margin-bottom: 14px; min-height: 18px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn-grid button { padding: 18px 8px; border: none; border-radius: 16px; font-size: 15px; font-weight: 700; color: white; cursor: pointer; transition: transform 0.1s; position: relative; outline: none; }
+        .btn-grid button:active { transform: scale(0.94); }
+        .btn-focus   { background: linear-gradient(135deg,#ff7675,#d63031); box-shadow: 0 4px 15px rgba(214,48,49,0.3); }
+        .btn-commute { background: linear-gradient(135deg,#74b9ff,#0984e3); box-shadow: 0 4px 15px rgba(9,132,227,0.3); }
+        .btn-baby    { background: linear-gradient(135deg,#55efc4,#00b894); box-shadow: 0 4px 15px rgba(0,184,148,0.3); }
+        .btn-sport   { background: linear-gradient(135deg,#fdcb6e,#e17055); box-shadow: 0 4px 15px rgba(225,112,85,0.3); }
+        .btn-grid button.recommended::after { content:''; position:absolute; inset:-3px; border-radius:18px; border:3px solid white; animation:ring 1.5s infinite; }
+        @keyframes ring { 0%,100%{opacity:.9} 50%{opacity:.2} }
+        .wake-lock-line { font-size: 11px; color: #b2bec3; text-align: center; margin-top: 10px; min-height: 16px; }
+
+        /* Content card */
+        .content-card h3 { margin: 0 0 14px; font-size: 17px; color: #2d3436; }
+        .info-row { font-size: 13px; color: #636e72; margin-bottom: 10px; }
+
+        /* Work – today's session summary */
+        .today-sessions { background: #f8f9fa; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+        .sess-header { font-size: 13px; font-weight: 700; color: #2d3436; margin-bottom: 8px; }
+        .sess-item { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 7px 10px; margin: 4px 0; background: white; border-radius: 8px; border-left: 3px solid transparent; }
+        .sess-loc { font-weight: 600; }
+        .sess-detail { color: #636e72; }
+
+        /* Work location picker */
+        .location-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 12px 0; }
+        .loc-btn { display: flex; flex-direction: column; align-items: center; padding: 14px 8px; border: 2px solid #e9ecef; border-radius: 14px; background: #f8f9fa; cursor: pointer; font-size: 12px; font-weight: 600; color: #636e72; gap: 6px; transition: all 0.2s; }
+        .loc-btn .loc-icon { font-size: 24px; }
+        .loc-btn:active { transform: scale(0.95); }
+        .loc-btn.home { border-color:#00b894; background:#d4f8ef; color:#00b894; }
+        .loc-btn.pg   { border-color:#0984e3; background:#e8f4fd; color:#0984e3; }
+        .loc-btn.giga { border-color:#d63031; background:#fdecea; color:#d63031; }
+
+        /* Session in-progress display */
+        .session-box { background: #f8f9fa; border-radius: 14px; padding: 16px; margin: 12px 0; text-align: center; }
+        .session-location { font-size: 13px; color: #636e72; margin-bottom: 4px; }
+        .session-timer { font-size: 40px; font-weight: 800; color: #2d3436; font-variant-numeric: tabular-nums; margin: 4px 0; }
+        .session-started { font-size: 12px; color: #b2bec3; }
+        .finish-btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; color: white; cursor: pointer; margin-top: 4px; }
+        .finish-work     { background: linear-gradient(135deg,#a29bfe,#6c5ce7); }
+        .finish-exercise { background: linear-gradient(135deg,#fdcb6e,#e17055); }
+
+        /* Commute sub-mode picker */
+        .commute-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+        .commute-opt { display: flex; flex-direction: column; align-items: center; padding: 22px 12px; border: 2px solid #e9ecef; border-radius: 16px; background: #f8f9fa; cursor: pointer; font-size: 14px; font-weight: 700; color: #636e72; gap: 8px; transition: all 0.2s; }
+        .commute-opt .c-icon { font-size: 34px; }
+        .commute-opt .c-sub  { font-size: 11px; font-weight: 400; color: #b2bec3; margin-top: -4px; }
+        .commute-opt:active { transform: scale(0.95); }
+        .commute-opt.drive   { border-color:#0984e3; background:#e8f4fd; color:#0984e3; }
+        .commute-opt.shuttle { border-color:#6c5ce7; background:#f0effe; color:#6c5ce7; }
+        .commute-opt.drive   .c-sub { color:#74b9ff; }
+        .commute-opt.shuttle .c-sub { color:#a29bfe; }
+
+        /* Shuttle checklist */
+        .checklist-title { font-size: 11px; font-weight: 700; color: #b2bec3; text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 8px; }
+        .check-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 5px 0; background: #f8f9fa; border-radius: 10px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+        .check-item:active { transform: scale(0.98); }
+        .check-icon { font-size: 18px; flex-shrink: 0; color: #b2bec3; min-width: 20px; text-align: center; }
+        .check-text { flex: 1; color: #2d3436; }
+        .check-item.checked { background: #d4edda; }
+        .check-item.checked .check-icon { color: #155724; }
+        .check-item.checked .check-text { color: #636e72; text-decoration: line-through; }
+        .all-clear { background: #d4edda; border-radius: 12px; padding: 14px; text-align: center; font-size: 15px; font-weight: 600; color: #155724; margin-top: 12px; display: none; }
+
+        /* Exercise */
+        .exercise-schedule { background: #fff3e0; border-radius: 12px; padding: 14px; margin: 12px 0; }
+        .ex-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
+        .ex-time { font-weight: 700; color: #e17055; width: 70px; }
+        .start-btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; color: white; cursor: pointer; background: linear-gradient(135deg,#fdcb6e,#e17055); box-shadow: 0 4px 15px rgba(225,112,85,0.35); }
+
+        /* Done */
+        .done-box { border-radius: 14px; padding: 16px; text-align: center; font-weight: 600; }
+        .done-box .done-icon { font-size: 32px; margin-bottom: 6px; }
+        .done-dur { font-size: 24px; font-weight: 800; margin: 6px 0; }
+
+        /* App links */
+        .app-link { display: flex; align-items: center; padding: 14px 16px; margin: 8px 0; background: #f8f9fa; border-radius: 12px; text-decoration: none; color: #333; border: 1px solid #e9ecef; font-size: 15px; }
+        .app-link:active { background: #e9ecef; }
+        .app-link .icon { margin-right: 12px; font-size: 22px; }
+        .tip { font-size: 12px; color: #b2bec3; margin-top: 10px; }
+        .secondary-btn { width: 100%; padding: 12px; background: #f0f0f0; color: #636e72; border: none; border-radius: 12px; font-size: 14px; cursor: pointer; margin-top: 10px; }
+
+        /* Stats */
+        .stats-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+        .stats-header h3 { margin: 0; font-size: 16px; color: #2d3436; }
+        .stats-toggle { color: #b2bec3; font-size: 14px; }
+        .stats-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+        .stats-label { font-size: 11px; font-weight: 700; color: #b2bec3; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+        .stat-row { margin-bottom: 14px; }
+        .stat-head { display: flex; justify-content: space-between; font-size: 14px; color: #2d3436; margin-bottom: 6px; }
+        .stat-meta { font-size: 12px; color: #636e72; }
+        .prog-bg { background: #f0f0f0; border-radius: 8px; height: 10px; overflow: hidden; }
+        .prog-fill { height: 100%; border-radius: 8px; transition: width 0.5s; }
+        .fill-sport { background: linear-gradient(90deg,#fdcb6e,#e17055); }
+        .loc-breakdown { display: flex; gap: 8px; margin-top: 10px; }
+        .loc-stat { flex: 1; text-align: center; padding: 12px 6px; border-radius: 12px; font-size: 12px; }
+        .loc-stat .pct  { font-size: 20px; font-weight: 800; }
+        .loc-stat .hrs  { font-size: 13px; font-weight: 700; margin: 2px 0; }
+        .loc-stat .lbl  { opacity: 0.75; font-size: 11px; }
+        .loc-stat.home { background:#d4f8ef; color:#00b894; }
+        .loc-stat.pg   { background:#e8f4fd; color:#0984e3; }
+        .loc-stat.giga { background:#fdecea; color:#d63031; }
+        .stacked-bar { display: flex; height: 14px; border-radius: 8px; overflow: hidden; margin-top: 10px; }
+        .no-data { text-align: center; color: #b2bec3; font-size: 13px; padding: 12px 0; }
+        .week-dots { display: flex; gap: 6px; margin-top: 8px; }
+        .w-dot { flex: 1; text-align: center; }
+        .w-dot .d-circle { width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .w-dot .d-label  { font-size: 10px; color: #b2bec3; }
+        .d-done   { background: linear-gradient(135deg,#fdcb6e,#e17055); color: white; }
+        .d-today  { background: #f0f0f0; border: 2px dashed #e17055; color: #e17055; }
+        .d-miss   { background: #f8d7da; color: #721c24; }
+        .d-skip   { background: #f0f0f0; color: #dee2e6; }
+    </style>
+</head>
+<body>
+
+<!-- Schedule Card -->
+<div class="card">
+    <div class="alarm-header" onclick="toggleSettings()">
+        <h3>⏰ Wake-up Schedule</h3>
+        <span class="wake-badge" id="wakeBadge">--:--</span>
+    </div>
+    <div id="settingsPanel" style="display:none">
+        <div class="settings-panel">
+            <div class="ex-note">🏀 Mon/Tue/Wed: auto 06:00 wake + basketball schedule</div>
+            <div class="setting-row">
+                <label>⏰ Regular wake-up</label>
+                <input type="time" id="wakeTimeInput">
+            </div>
+            <div class="setting-row">
+                <label>🟢 Baby (min after wake)</label>
+                <div><input type="number" id="inp_baby" min="0" max="300" style="width:80px"><span class="unit">min</span></div>
+            </div>
+            <div class="setting-row">
+                <label>🔴 Work (min after wake)</label>
+                <div><input type="number" id="inp_focus" min="0" max="300" style="width:80px"><span class="unit">min</span></div>
+            </div>
+            <div class="setting-row">
+                <label>🔵 Commute (min after wake)</label>
+                <div><input type="number" id="inp_commute" min="0" max="300" style="width:80px"><span class="unit">min</span></div>
+            </div>
+            <button class="btn-save" onclick="saveSettings()">✓ Save</button>
+            <a class="alarm-open-link" id="alarmAppLink" href="#">📱 Open Phone Alarm App</a>
+        </div>
+    </div>
+    <div class="schedule-section">
+        <div class="schedule-label" id="dayLabel">Today</div>
+        <div id="timelineEl"></div>
+        <div class="suggest-bar" id="suggestBar">Loading…</div>
+    </div>
+    <button class="notif-btn" id="notifBtn" onclick="toggleNotifications()">🔔 Enable mode reminders</button>
+</div>
+
+<!-- Timer + Modes -->
+<div class="card">
+    <div class="date-bar" id="dateBar"></div>
+    <div class="timer" id="timerEl">Ready</div>
+    <div class="awake-line" id="awakeLine"></div>
+    <div class="btn-grid">
+        <button class="btn-focus"   id="btnFocus"   onclick="selectMode('focus')"   ontouchstart="">Work</button>
+        <button class="btn-commute" id="btnCommute" onclick="selectMode('commute')" ontouchstart="">Commute</button>
+        <button class="btn-baby"    id="btnBaby"    onclick="selectMode('baby')"    ontouchstart="">Baby</button>
+        <button class="btn-sport"   id="btnSport"   onclick="selectMode('sport')"   ontouchstart="">🏀 Sport</button>
+    </div>
+    <div class="wake-lock-line" id="wakeLockLine"></div>
+</div>
+
+<!-- Content -->
+<div id="contentArea" class="card content-card" style="display:none">
+    <h3 id="modeTitle"></h3>
+    <div id="dynamicContent"></div>
+</div>
+
+<!-- Stats -->
+<div class="card">
+    <div class="stats-header" onclick="toggleStats()">
+        <h3>📊 Progress Stats</h3>
+        <span class="stats-toggle" id="statsToggle">▼</span>
+    </div>
+    <div id="statsPanel" style="display:none">
+        <div id="statsContent"></div>
+    </div>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────
+const CFG_KEY     = 'lbCfg';
+const RECORDS_KEY = 'lbRecords';
+const SESSION_KEY = 'lbSession';
+const EX_DAYS     = [1,2,3];          // Mon Tue Wed
+const EX_WAKE_H   = 6, EX_WAKE_M = 0;
+const COURT_MIN   = 60;
+const EX_DUR_MIN  = 60;
+
+// ── State ──────────────────────────────────────────────────────
+const DEF = { wakeTime:'07:00', babyOffset:0, focusOffset:30, commuteOffset:90 };
+let cfg = { ...DEF };
+let countUp = null, countDown = null;
+let wakeLock = null, notifOn = false, notifTimers = [];
+let activeSession = null;
+
+// ── Utility ────────────────────────────────────────────────────
+const todayStr = () => new Date().toISOString().slice(0,10);
+const todayDow = () => new Date().getDay();
+const isExDay  = () => EX_DAYS.includes(todayDow());
+
+function fmt12(h, m) {
+    return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+}
+function fmtTime(ms) {
+    return new Date(ms).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+// Duration in h+m (e.g. "2h 15m" or "45 min")
+function fmtDur(ms) {
+    const totalM = Math.floor(ms/60000);
+    const h = Math.floor(totalM/60), m = totalM%60;
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    return `${m} min`;
+}
+// Awake/elapsed time in h+m
+function fmtHM(mins) {
+    if (mins < 1)  return '< 1 min';
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins/60), m = mins%60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+// Round ms to nearest 0.5h and return "X.Xh" string
+function fmtHalfH(ms) {
+    const halves = Math.round(ms / 1800000);   // 1800000ms = 30min = 0.5h
+    const h = halves / 2;
+    return Number.isInteger(h) ? `${h}h` : `${h}h`;
+}
+function fmtCountUp(ms) {
+    const s=Math.floor(ms/1000);
+    const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), ss=s%60;
+    if (h>0) return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+function clearTimers() {
+    clearInterval(countUp); clearInterval(countDown);
+    countUp=null; countDown=null;
+}
+function setDateBar() {
+    document.getElementById('dateBar').textContent = new Date().toLocaleDateString('en-US', {
+        weekday:'long', year:'numeric', month:'long', day:'numeric'
+    });
+}
+
+// ── Storage ────────────────────────────────────────────────────
+function loadCfg() {
+    try { cfg={...DEF,...JSON.parse(localStorage.getItem(CFG_KEY)||'{}')}; } catch(_){}
+}
+function saveCfgFromUI() {
+    cfg.wakeTime     = document.getElementById('wakeTimeInput').value || DEF.wakeTime;
+    cfg.babyOffset   = +document.getElementById('inp_baby').value    || 0;
+    cfg.focusOffset  = +document.getElementById('inp_focus').value   || 30;
+    cfg.commuteOffset= +document.getElementById('inp_commute').value || 90;
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+}
+function getRecords() {
+    try { return JSON.parse(localStorage.getItem(RECORDS_KEY)||'[]'); } catch(_){ return []; }
+}
+// Add a new work session record (never deduplicated — multiple per day allowed)
+function addRecord(rec) {
+    const all = getRecords();
+    all.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), ...rec });
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(all));
+}
+// Upsert by date+type — used for exercise (one per day)
+function upsertRecord(rec) {
+    const all = getRecords();
+    const idx = all.findIndex(r => r.date===rec.date && r.type===rec.type);
+    if (idx>=0) all[idx]={...all[idx],...rec};
+    else all.push({ id: Date.now().toString(36), ...rec });
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(all));
+}
+function getTodayWorkSessions() {
+    return getRecords().filter(r=>r.date===todayStr()&&r.type==='work'&&r.completed);
+}
+function getTodayRecord(type) {
+    return getRecords().find(r=>r.date===todayStr()&&r.type===type);
+}
+function loadSession() {
+    try {
+        const s=JSON.parse(localStorage.getItem(SESSION_KEY));
+        if (s&&s.date===todayStr()) return s;
+    } catch(_){}
+    return null;
+}
+function saveSession(s) {
+    if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    else   localStorage.removeItem(SESSION_KEY);
+}
+
+// ── Wake time for today ────────────────────────────────────────
+function todayWakeMs() {
+    let h,m;
+    if (isExDay()) { h=EX_WAKE_H; m=EX_WAKE_M; }
+    else { [h,m]=cfg.wakeTime.split(':').map(Number); }
+    const d=new Date(); d.setHours(h,m,0,0);
+    return d.getTime();
+}
+
+// ── Settings ───────────────────────────────────────────────────
+function toggleSettings() {
+    const p=document.getElementById('settingsPanel');
+    if (p.style.display==='none') {
+        document.getElementById('wakeTimeInput').value  =cfg.wakeTime;
+        document.getElementById('inp_baby').value       =cfg.babyOffset;
+        document.getElementById('inp_focus').value      =cfg.focusOffset;
+        document.getElementById('inp_commute').value    =cfg.commuteOffset;
+        p.style.display='block';
+    } else { p.style.display='none'; }
+}
+function saveSettings() {
+    saveCfgFromUI();
+    document.getElementById('settingsPanel').style.display='none';
+    render(); scheduleNotifs(); vibe([40,30,80]);
+}
+function setAlarmLink() {
+    const a=document.getElementById('alarmAppLink'), ua=navigator.userAgent;
+    if (/android/i.test(ua)) a.href='intent://alarm#Intent;scheme=android-app;package=com.google.android.deskclock;end';
+    else if (/iphone|ipad/i.test(ua)) a.href='clock-alarm://';
+    else { a.textContent='📱 Open on phone for alarm link'; a.href='#'; }
+}
+
+// ── Schedule render ────────────────────────────────────────────
+function buildSchedule() {
+    const wakeMs=todayWakeMs();
+    if (isExDay()) {
+        return [
+            { id:'wake',    label:'⏰ Wake up',          color:'#fdcb6e', startMs:wakeMs },
+            { id:'sport',   label:'🏀 Basketball Court', color:'#e17055', startMs:wakeMs+COURT_MIN*60000 },
+            { id:'home_ex', label:'🏠 Home & Lunch',     color:'#00b894', startMs:wakeMs+(COURT_MIN+EX_DUR_MIN)*60000 },
+        ];
+    }
+    return [
+        { id:'baby',    label:'🟢 Baby Time',      color:'#00b894', startMs:wakeMs+cfg.babyOffset*60000 },
+        { id:'focus',   label:'🔴 Work / Focus',   color:'#d63031', startMs:wakeMs+cfg.focusOffset*60000 },
+        { id:'commute', label:'🔵 Commute',        color:'#0984e3', startMs:wakeMs+cfg.commuteOffset*60000 },
+    ].sort((a,b)=>a.startMs-b.startMs);
+}
+
+function render() {
+    const sched=buildSchedule(), now=Date.now();
+    const exDay=isExDay();
+    const minsAwake=Math.round((now-todayWakeMs())/60000);
+    const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    setDateBar();
+
+    const [wh,wm]=exDay?[EX_WAKE_H,EX_WAKE_M]:cfg.wakeTime.split(':').map(Number);
+    document.getElementById('wakeBadge').textContent=fmt12(wh,wm);
+    document.getElementById('dayLabel').textContent=`${DAYS[todayDow()]} · ${exDay?'🏀 Exercise Day':'Regular Day'}`;
+
+    const rec=sched.reduce((cur,x)=>now>=x.startMs?x:cur,null);
+    document.getElementById('timelineEl').innerHTML=sched.map(x=>{
+        const isNow=rec&&rec.id===x.id, isPast=!isNow&&now>x.startMs;
+        let badge,bc;
+        if (isNow)       {badge='Now'; bc='badge-now';}
+        else if (isPast) {badge='Done';bc='badge-past';}
+        else {const m=Math.round((x.startMs-now)/60000);badge=`in ${m}m`;bc='badge-soon';}
+        return `<div class="timeline-item">
+            <div class="t-dot${isNow?' pulse':''}" style="background:${x.color}"></div>
+            <div class="t-time">${fmtTime(x.startMs)}</div>
+            <div class="t-name">${x.label}</div>
+            <span class="t-badge ${bc}">${badge}</span>
+        </div>`;
+    }).join('');
+
+    const bar=document.getElementById('suggestBar');
+    if (now<todayWakeMs()) {
+        const ml=Math.round((todayWakeMs()-now)/60000);
+        bar.className='suggest-bar sleep'; bar.textContent=`⏰ Wake-up in ${fmtHM(ml)} 😴`;
+    } else if (exDay) {
+        bar.className='suggest-bar sport'; bar.textContent=`🏀 Exercise Day · ${fmtHM(minsAwake)} since wake-up`;
+    } else if (rec) {
+        bar.className='suggest-bar active'; bar.textContent=`Suggested: ${rec.label}  ·  ${fmtHM(minsAwake)} awake`;
+    } else {
+        bar.className='suggest-bar'; bar.textContent='Good morning! Choose a mode.';
+    }
+
+    document.getElementById('awakeLine').textContent=
+        minsAwake>=0&&minsAwake<900 ? `${fmtHM(minsAwake)} since wake-up` : '';
+
+    const sportRec=exDay&&minsAwake>=COURT_MIN-15&&minsAwake<COURT_MIN+EX_DUR_MIN+30;
+    const recBtn=sportRec?'sport':(rec&&['focus','commute','baby'].includes(rec.id)?rec.id:null);
+    ['focus','commute','baby','sport'].forEach(id=>{
+        const el=document.getElementById('btn'+id.charAt(0).toUpperCase()+id.slice(1));
+        if(el) el.classList.toggle('recommended', id===recBtn);
+    });
+}
+
+// ── Mode select ────────────────────────────────────────────────
+function selectMode(mode) {
+    clearTimers(); vibe([40,30,100]);
+    document.getElementById('contentArea').style.display='block';
+    const c=document.getElementById('dynamicContent');
+    if      (mode==='focus')   showWorkMode(c);
+    else if (mode==='commute') showCommuteMode(c);
+    else if (mode==='baby')    showBabyMode(c);
+    else if (mode==='sport')   showSportMode(c);
+}
+
+// ── Work ───────────────────────────────────────────────────────
+const LOC={
+    home:{ name:'🏠 Home Office', color:'#00b894' },
+    pg:  { name:'🏢 PG Office',   color:'#0984e3' },
+    giga:{ name:'🏗️ Giga Office', color:'#d63031' },
+};
+
+function showWorkMode(c) {
+    document.getElementById('modeTitle').textContent='Work Mode';
+    document.getElementById('timerEl').textContent='Work';
+    const session=loadSession();
+    if (session&&session.type==='work') { activeSession=session; showWorkSession(c,session); return; }
+    showWorkDashboard(c);
+}
+
+function showWorkDashboard(c) {
+    document.getElementById('modeTitle').textContent='Work Mode';
+    const sessions=getTodayWorkSessions();
+    const totalMs=sessions.reduce((s,r)=>s+(r.durationMs||0),0);
+    const minsAwake=Math.max(0,Math.round((Date.now()-todayWakeMs())/60000));
+
+    let summaryHtml='';
+    if (sessions.length>0) {
+        const rows=sessions.map(s=>{
+            const loc=LOC[s.location]||{name:s.location,color:'#636e72'};
+            const start=new Date(s.startIso).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+            const end  =s.endIso?new Date(s.endIso).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}):'—';
+            return `<div class="sess-item" style="border-left-color:${loc.color}">
+                <span class="sess-loc" style="color:${loc.color}">${loc.name}</span>
+                <span class="sess-detail">${fmtHalfH(s.durationMs||0)} · ${start}–${end}</span>
+            </div>`;
+        }).join('');
+        summaryHtml=`<div class="today-sessions">
+            <div class="sess-header">Today: ${fmtHalfH(totalMs)} · ${sessions.length} session${sessions.length>1?'s':''}</div>
+            ${rows}
+        </div>`;
+    }
+    c.innerHTML=`${summaryHtml}
+        <div class="info-row">⏰ ${fmtHM(minsAwake)} · ${sessions.length>0?'Log another session:':'Where are you working today?'}</div>
+        <div class="location-grid">
+            <button class="loc-btn" onclick="startWork('home')"><span class="loc-icon">🏠</span>Home Office</button>
+            <button class="loc-btn" onclick="startWork('pg')"><span class="loc-icon">🏢</span>PG Office</button>
+            <button class="loc-btn" onclick="startWork('giga')"><span class="loc-icon">🏗️</span>Giga Office</button>
+        </div>`;
+}
+
+function startWork(loc) {
+    vibe([50,30,100]);
+    activeSession={ type:'work', location:loc, date:todayStr(), startIso:new Date().toISOString() };
+    saveSession(activeSession);
+    acquireWakeLock();
+    showWorkSession(document.getElementById('dynamicContent'), activeSession);
+}
+
+function showWorkSession(c, session) {
+    document.getElementById('modeTitle').textContent='Work in Progress';
+    const startMs=new Date(session.startIso).getTime();
+    const startStr=new Date(session.startIso).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    const loc=LOC[session.location]||{name:session.location,color:'#6c5ce7'};
+    c.innerHTML=`
+        <div class="session-box">
+            <div class="session-location" style="color:${loc.color}">${loc.name}</div>
+            <div class="session-timer" id="sessTimer">${fmtCountUp(Date.now()-startMs)}</div>
+            <div class="session-started">Started ${startStr}</div>
+        </div>
+        <button class="finish-btn finish-work" onclick="finishWork()">✓ Finish Work</button>`;
+    clearTimers();
+    countUp=setInterval(()=>{
+        const el=document.getElementById('sessTimer'), elapsed=Date.now()-startMs;
+        if(el) el.textContent=fmtCountUp(elapsed);
+        document.getElementById('timerEl').textContent=fmtCountUp(elapsed);
+    },1000);
+}
+
+function finishWork() {
+    if (!activeSession) return;
+    vibe([100,50,200]); clearTimers(); releaseWakeLock();
+    const endIso=new Date().toISOString();
+    const durMs=new Date(endIso)-new Date(activeSession.startIso);
+    // Use addRecord so multiple sessions per day are all preserved
+    addRecord({ date:activeSession.date, type:'work', location:activeSession.location,
+        completed:true, startIso:activeSession.startIso, endIso, durationMs:durMs });
+    saveSession(null);
+
+    const sessions=getTodayWorkSessions();
+    const totalMs=sessions.reduce((s,r)=>s+(r.durationMs||0),0);
+    const loc=LOC[activeSession.location]||{name:activeSession.location,color:'#6c5ce7'};
+
+    document.getElementById('modeTitle').textContent='Session Complete ✅';
+    document.getElementById('timerEl').textContent='Done!';
+    document.getElementById('dynamicContent').innerHTML=`
+        <div class="done-box" style="background:#e8f4fd;color:${loc.color}">
+            <div class="done-icon">✅</div>
+            <div>${loc.name}</div>
+            <div class="done-dur">${fmtHalfH(durMs)}</div>
+            <div style="font-size:12px;opacity:.7">Today total: ${fmtHalfH(totalMs)}</div>
+        </div>
+        <button class="secondary-btn" onclick="showWorkDashboard(document.getElementById('dynamicContent'))">+ Log another session</button>`;
+    activeSession=null; renderStats();
+}
+
+// ── Commute ────────────────────────────────────────────────────
+function showCommuteMode(c) {
+    document.getElementById('modeTitle').textContent='Commute';
+    document.getElementById('timerEl').textContent='Commute';
+    const minsAwake=Math.max(0,Math.round((Date.now()-todayWakeMs())/60000));
+    c.innerHTML=`
+        <div class="info-row">⏰ ${fmtHM(minsAwake)} · How are you commuting today?</div>
+        <div class="commute-grid">
+            <button class="commute-opt drive" onclick="startDrive()">
+                <span class="c-icon">🚗</span>Drive
+                <span class="c-sub">Audio mode</span>
+            </button>
+            <button class="commute-opt shuttle" onclick="startShuttle()">
+                <span class="c-icon">🚌</span>Shuttle
+                <span class="c-sub">Review mode</span>
+            </button>
+        </div>`;
+}
+
+function startDrive() {
+    vibe([40,30,80]);
+    document.getElementById('modeTitle').textContent='🚗 Drive';
+    const minsAwake=Math.max(0,Math.round((Date.now()-todayWakeMs())/60000));
+    document.getElementById('dynamicContent').innerHTML=`
+        <div class="info-row">⏰ ${fmtHM(minsAwake)} · Enjoy the drive!</div>
+        <a class="app-link" href="xmly://"    ontouchstart=""><span class="icon">🎧</span>Ximalaya — 喜马拉雅</a>
+        <a class="app-link" href="orpheus://" ontouchstart=""><span class="icon">🎶</span>NetEase Music</a>
+        <a class="app-link" href="qqmusic://" ontouchstart=""><span class="icon">🎵</span>QQ Music</a>
+        <div class="tip">💡 Ximalaya for podcasts & audiobooks; NetEase / QQ Music for playlists.</div>`;
+    acquireWakeLock();
+    const end=Date.now()+90*60000;
+    countDown=setInterval(()=>{
+        const dist=end-Date.now();
+        if(dist<0){clearInterval(countDown);document.getElementById('timerEl').textContent='Arrived!';vibe([200,100,200,100,300]);releaseWakeLock();return;}
+        const m=Math.floor(dist/60000),s=Math.floor((dist%60000)/1000);
+        document.getElementById('timerEl').textContent=`${m}:${String(s).padStart(2,'0')}`;
+    },1000);
+}
+
+const SHUTTLE_ITEMS=[
+    {id:'s1',icon:'💬',text:'Teams — New chat messages'},
+    {id:'s2',icon:'🔔',text:'Teams — @Mentions & replies'},
+    {id:'s3',icon:'📞',text:'Teams — Missed calls'},
+    {id:'s4',icon:'📧',text:'Outlook — Triage unread emails'},
+    {id:'s5',icon:'🚩',text:'Outlook — Flag action items'},
+    {id:'s6',icon:'📅',text:"Today's meetings & agenda"},
+];
+
+function startShuttle() {
+    vibe([40,30,80]);
+    document.getElementById('modeTitle').textContent='🚌 Shuttle — Review Mode';
+    const startMs=Date.now();
+    document.getElementById('dynamicContent').innerHTML=`
+        <div style="display:flex;gap:10px;margin-bottom:4px">
+            <a class="app-link" href="msteams://"    style="flex:1;margin:0" ontouchstart=""><span class="icon">💼</span>Teams</a>
+            <a class="app-link" href="ms-outlook://" style="flex:1;margin:0" ontouchstart=""><span class="icon">📧</span>Outlook</a>
+        </div>
+        <div class="checklist-title">📬 Review Checklist</div>
+        ${SHUTTLE_ITEMS.map(it=>`
+            <div class="check-item" id="${it.id}" onclick="toggleCheck('${it.id}')">
+                <span class="check-icon">☐</span>
+                <span class="check-text">${it.icon} ${it.text}</span>
+            </div>`).join('')}
+        <div class="all-clear" id="allClear">✅ Inbox clear — ready to focus!</div>`;
+    acquireWakeLock();
+    countUp=setInterval(()=>{
+        document.getElementById('timerEl').textContent=fmtCountUp(Date.now()-startMs);
+    },1000);
+}
+
+function toggleCheck(id) {
+    const el=document.getElementById(id);
+    const icon=el.querySelector('.check-icon');
+    vibe([20]);
+    if (icon.textContent==='☐'){ icon.textContent='☑'; el.classList.add('checked'); }
+    else                        { icon.textContent='☐'; el.classList.remove('checked'); }
+    const total=document.querySelectorAll('.check-item').length;
+    const done =document.querySelectorAll('.check-item.checked').length;
+    const ac=document.getElementById('allClear');
+    if (ac) { ac.style.display=(done===total)?'block':'none'; }
+    if (done===total) vibe([100,50,200]);
+}
+
+// ── Baby ───────────────────────────────────────────────────────
+function showBabyMode(c) {
+    document.getElementById('modeTitle').textContent='Baby Time ❤️';
+    document.getElementById('timerEl').textContent='Enjoy!';
+    const diff=Date.now()-new Date('2025-11-04').getTime();
+    const months=Math.floor(diff/(1000*60*60*24*30.44)), days=Math.floor(diff/(1000*60*60*24))%30;
+    const minsAwake=Math.max(0,Math.round((Date.now()-todayWakeMs())/60000));
+    c.innerHTML=`
+        <div class="info-row">🍼 Baby: ${months}m ${days}d · ⏰ ${fmtHM(minsAwake)}</div>
+        <a class="app-link" href="orpheus://" ontouchstart=""><span class="icon">🎶</span>NetEase Music — 英文儿歌</a>`;
+}
+
+// ── Sport ──────────────────────────────────────────────────────
+function showSportMode(c) {
+    document.getElementById('modeTitle').textContent='🏀 Exercise';
+    const session=loadSession();
+    if (session&&session.type==='exercise') { activeSession=session; showExerciseSession(c,session); return; }
+    const rec=getTodayRecord('exercise');
+    if (rec&&rec.completed) { showExerciseDone(c,rec); return; }
+    const minsAwake=Math.max(0,Math.round((Date.now()-todayWakeMs())/60000));
+    c.innerHTML=`
+        <div class="exercise-schedule">
+            <div style="font-weight:700;color:#e17055;margin-bottom:8px">🏀 Basketball Schedule</div>
+            <div class="ex-row"><span class="ex-time">6:00 AM</span><span>⏰ Wake up</span></div>
+            <div class="ex-row"><span class="ex-time">7:00 AM</span><span>🚶 Arrive at court</span></div>
+            <div class="ex-row"><span class="ex-time">7–8 AM</span><span>🏀 Exercise (1 hour)</span></div>
+            <div class="ex-row"><span class="ex-time">8:00 AM</span><span>🏠 Home & lunch</span></div>
+        </div>
+        ${!isExDay()?'<div class="info-row" style="color:#e17055">⚠️ Today is not Mon/Tue/Wed</div>':''}
+        <div class="info-row">⏰ ${fmtHM(minsAwake)} awake</div>
+        <button class="start-btn" onclick="startExercise()">▶ Start Exercise</button>`;
+    document.getElementById('timerEl').textContent=isExDay()?'🏀':'Sport';
+}
+
+function startExercise() {
+    vibe([50,30,100]);
+    activeSession={ type:'exercise', date:todayStr(), startIso:new Date().toISOString() };
+    saveSession(activeSession);
+    acquireWakeLock();
+    showExerciseSession(document.getElementById('dynamicContent'), activeSession);
+}
+
+function showExerciseSession(c, session) {
+    document.getElementById('modeTitle').textContent='🏀 Exercising…';
+    const startMs=new Date(session.startIso).getTime();
+    const startStr=new Date(session.startIso).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    c.innerHTML=`
+        <div class="session-box" style="background:#fff3e0">
+            <div class="session-location" style="color:#e17055">🏀 Basketball Court</div>
+            <div class="session-timer" id="sessTimer" style="color:#e17055">${fmtCountUp(Date.now()-startMs)}</div>
+            <div class="session-started">Started ${startStr} · Target: 1 hour</div>
+        </div>
+        <button class="finish-btn finish-exercise" onclick="finishExercise()">✓ Finish Exercise</button>`;
+    clearTimers();
+    countUp=setInterval(()=>{
+        const el=document.getElementById('sessTimer'), elapsed=Date.now()-startMs;
+        if(el) el.textContent=fmtCountUp(elapsed);
+        document.getElementById('timerEl').textContent=fmtCountUp(elapsed);
+    },1000);
+}
+
+function finishExercise() {
+    if (!activeSession) return;
+    vibe([100,50,200,50,300]); clearTimers(); releaseWakeLock();
+    const endIso=new Date().toISOString();
+    const durMs=new Date(endIso)-new Date(activeSession.startIso);
+    upsertRecord({ date:activeSession.date, type:'exercise', completed:true,
+        startIso:activeSession.startIso, endIso, durationMs:durMs });
+    saveSession(null);
+    showExerciseDone(document.getElementById('dynamicContent'), {durationMs:durMs});
+    activeSession=null; renderStats();
+}
+
+function showExerciseDone(c, rec) {
+    document.getElementById('modeTitle').textContent='🏀 Exercise Complete';
+    document.getElementById('timerEl').textContent='🎉';
+    const dur=rec.durationMs?fmtDur(rec.durationMs):'—';
+    c.innerHTML=`
+        <div class="done-box" style="background:#fff3e0;color:#e17055">
+            <div class="done-icon">🏀</div>
+            <div>Great workout!</div>
+            <div class="done-dur">${dur}</div>
+            <div style="font-size:12px;opacity:.7">💪 Keep up the streak!</div>
+        </div>`;
+}
+
+// ── Wake Lock ──────────────────────────────────────────────────
+async function acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+        wakeLock=await navigator.wakeLock.request('screen');
+        document.getElementById('wakeLockLine').textContent='🔆 Screen locked on';
+        wakeLock.addEventListener('release',()=>{ document.getElementById('wakeLockLine').textContent=''; });
+    } catch(_){}
+}
+function releaseWakeLock() {
+    if(wakeLock){ wakeLock.release(); wakeLock=null; }
+    document.getElementById('wakeLockLine').textContent='';
+}
+document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&activeSession) acquireWakeLock();
+});
+function vibe(p){ if(navigator.vibrate) navigator.vibrate(p); }
+
+// ── Notifications ──────────────────────────────────────────────
+async function toggleNotifications() {
+    if(!('Notification' in window)){alert('Not supported');return;}
+    if(Notification.permission==='denied'){alert('Blocked in browser settings');return;}
+    if(!notifOn){
+        const p=await Notification.requestPermission();
+        if(p==='granted'){
+            notifOn=true; localStorage.setItem('lbNotif','1');
+            document.getElementById('notifBtn').className='notif-btn on';
+            document.getElementById('notifBtn').textContent='🔔 Reminders: ON';
+            scheduleNotifs(); vibe([40,30,80]);
+        }
+    } else {
+        notifOn=false; localStorage.removeItem('lbNotif');
+        notifTimers.forEach(t=>clearTimeout(t)); notifTimers=[];
+        document.getElementById('notifBtn').className='notif-btn';
+        document.getElementById('notifBtn').textContent='🔔 Enable mode reminders';
+    }
+}
+function scheduleNotifs() {
+    if(!notifOn) return;
+    notifTimers.forEach(t=>clearTimeout(t)); notifTimers=[];
+    buildSchedule().forEach(x=>{
+        const delay=x.startMs-Date.now();
+        if(delay>0&&delay<24*3600000){
+            notifTimers.push(setTimeout(()=>{
+                new Notification(`Time for ${x.label}!`,{body:'Tap to open Life Buddy Pro',tag:x.id});
+                vibe([200,100,200]);
+            },delay));
+        }
+    });
+}
+
+// ── Stats ──────────────────────────────────────────────────────
+function toggleStats() {
+    const p=document.getElementById('statsPanel'), t=document.getElementById('statsToggle');
+    if(p.style.display==='none'){ p.style.display='block'; t.textContent='▲'; renderStats(); }
+    else { p.style.display='none'; t.textContent='▼'; }
+}
+
+function getWeekBounds() {
+    const now=new Date(), dow=now.getDay();
+    const mon=new Date(now); mon.setDate(now.getDate()+(dow===0?-6:1-dow)); mon.setHours(0,0,0,0);
+    const sun=new Date(mon); sun.setDate(mon.getDate()+7);
+    return {start:mon,end:sun};
+}
+function countExDays(start,end) {
+    let n=0; const d=new Date(start); d.setHours(0,0,0,0);
+    const e=new Date(end); e.setHours(0,0,0,0);
+    while(d<e){ if(EX_DAYS.includes(d.getDay())) n++; d.setDate(d.getDate()+1); }
+    return n;
+}
+
+function exStats() {
+    const recs=getRecords().filter(r=>r.type==='exercise'&&r.completed);
+    const now=new Date();
+    const tomorrow=new Date(now); tomorrow.setDate(now.getDate()+1); tomorrow.setHours(0,0,0,0);
+    const {start:ws,end:we}=getWeekBounds();
+    const ms=new Date(now.getFullYear(),now.getMonth(),1);
+    const me=new Date(now.getFullYear(),now.getMonth()+1,1);
+    const wCap=tomorrow<we?tomorrow:we, mCap=tomorrow<me?tomorrow:me;
+    const wPlan=countExDays(ws,wCap), wDone=recs.filter(r=>{const d=new Date(r.date);return d>=ws&&d<we;}).length;
+    const mPlan=countExDays(ms,mCap), mDone=recs.filter(r=>{const d=new Date(r.date);return d>=ms&&d<me;}).length;
+    const dots=[];
+    for(let i=0;i<7;i++){
+        const d=new Date(ws); d.setDate(ws.getDate()+i);
+        if(!EX_DAYS.includes(d.getDay())) continue;
+        const ds=d.toISOString().slice(0,10);
+        const isDone=recs.some(r=>r.date===ds), isToday=ds===todayStr(), isFuture=d>new Date();
+        dots.push({label:['Mon','Tue','Wed'][[1,2,3].indexOf(d.getDay())],done:isDone,today:isToday,future:isFuture});
+    }
+    return {wDone,wPlan,mDone,mPlan,wRate:wPlan?Math.round(wDone/wPlan*100):0,mRate:mPlan?Math.round(mDone/mPlan*100):0,dots};
+}
+
+function workStats() {
+    // Stats based on hours (0.5h precision), not session count
+    const now=new Date();
+    const ms=new Date(now.getFullYear(),now.getMonth(),1);
+    const me=new Date(now.getFullYear(),now.getMonth()+1,1);
+    const month=getRecords().filter(r=>r.type==='work'&&r.completed&&new Date(r.date)>=ms&&new Date(r.date)<me);
+    const totalMs=month.reduce((s,r)=>s+(r.durationMs||0),0);
+    const byMs={home:0,pg:0,giga:0};
+    month.forEach(r=>{ if(byMs[r.location]!==undefined) byMs[r.location]+=(r.durationMs||0); });
+    const pct=l=>totalMs>0?Math.round(byMs[l]/totalMs*100):0;
+    const hrs=l=>fmtHalfH(byMs[l]);
+    return {totalMs, totalH:fmtHalfH(totalMs), pct, hrs};
+}
+
+function renderStats() {
+    const el=document.getElementById('statsContent');
+    if(!el||document.getElementById('statsPanel').style.display==='none') return;
+    const ex=exStats(), w=workStats();
+
+    const dotHtml=ex.dots.map(d=>{
+        let cls='d-skip',icon='·';
+        if(d.done){cls='d-done';icon='✓';}
+        else if(d.today){cls='d-today';icon='?';}
+        else if(!d.future){cls='d-miss';icon='✗';}
+        return `<div class="w-dot"><div class="d-circle ${cls}">${icon}</div><div class="d-label">${d.label}</div></div>`;
+    }).join('');
+
+    const workBody=w.totalMs===0?'<div class="no-data">No work sessions recorded yet</div>':`
+        <div class="loc-breakdown">
+            <div class="loc-stat home">
+                <div class="pct">${w.pct('home')}%</div>
+                <div class="hrs">${w.hrs('home')}</div>
+                <div class="lbl">🏠 Home</div>
+            </div>
+            <div class="loc-stat pg">
+                <div class="pct">${w.pct('pg')}%</div>
+                <div class="hrs">${w.hrs('pg')}</div>
+                <div class="lbl">🏢 PG</div>
+            </div>
+            <div class="loc-stat giga">
+                <div class="pct">${w.pct('giga')}%</div>
+                <div class="hrs">${w.hrs('giga')}</div>
+                <div class="lbl">🏗️ Giga</div>
+            </div>
+        </div>
+        <div class="stacked-bar">
+            <div style="width:${w.pct('home')}%;background:#00b894"></div>
+            <div style="width:${w.pct('pg')}%;background:#0984e3"></div>
+            <div style="width:${w.pct('giga')}%;background:#d63031"></div>
+        </div>`;
+
+    el.innerHTML=`
+        <div class="stats-section">
+            <div class="stats-label">🏀 Exercise Achievement</div>
+            <div class="week-dots">${dotHtml}</div>
+            <div class="stat-row" style="margin-top:12px">
+                <div class="stat-head"><span>This Week</span><span class="stat-meta">${ex.wDone}/${ex.wPlan} days · ${ex.wRate}%</span></div>
+                <div class="prog-bg"><div class="prog-fill fill-sport" style="width:${ex.wRate}%"></div></div>
+            </div>
+            <div class="stat-row">
+                <div class="stat-head"><span>This Month</span><span class="stat-meta">${ex.mDone}/${ex.mPlan} days · ${ex.mRate}%</span></div>
+                <div class="prog-bg"><div class="prog-fill fill-sport" style="width:${ex.mRate}%"></div></div>
+            </div>
+        </div>
+        <div class="stats-section">
+            <div class="stats-label">💼 Work Locations — This Month (${w.totalH} total)</div>
+            ${workBody}
+        </div>`;
+}
+
+// ── Init ───────────────────────────────────────────────────────
+loadCfg();
+setAlarmLink();
+render();
+setInterval(render, 60000);
+
+if(localStorage.getItem('lbNotif')==='1'&&typeof Notification!=='undefined'&&Notification.permission==='granted'){
+    notifOn=true;
+    document.getElementById('notifBtn').className='notif-btn on';
+    document.getElementById('notifBtn').textContent='🔔 Reminders: ON';
+    scheduleNotifs();
+}
+
+const savedSess=loadSession();
+if(savedSess){
+    activeSession=savedSess;
+    document.getElementById('contentArea').style.display='block';
+    const c=document.getElementById('dynamicContent');
+    if(savedSess.type==='work')     showWorkSession(c, savedSess);
+    if(savedSess.type==='exercise') showExerciseSession(c, savedSess);
+    acquireWakeLock();
+}
+</script>
+</body>
+</html>
