@@ -1,0 +1,21 @@
+# 环境变量（含 API Key，绝对不能上传）
+.env
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 本地数据库
+*.sqlite3
+
+# 案件材料（含客户信息）
+深圳市金乐道/
+*.docx
+
+# VS Code 本地配置
+.vscode/
+
+# Windows 系统文件
+Thumbs.db
+desktop.ini
